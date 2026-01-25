@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class TextTrigger : MonoBehaviour
 {
     [Header("Trigger Settings")]
-    public int areaID; // id unico dell'area
+    public int areaID;
     [TextArea(3,10)]
     public string fullText;
 

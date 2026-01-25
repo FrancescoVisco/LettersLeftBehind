@@ -6,14 +6,11 @@ public class CanvasController : MonoBehaviour
 {
     [Header("References")]
     public TextMeshProUGUI textUI;
-
     [Header("Selection")]
     public Color selectedWordColor = Color.cyan;
-
     private List<WordData> words = new List<WordData>();
     private int selectedWordIndex = -1;
     private bool hasActiveText = false;
-
     private TextTrigger currentTrigger = null;
 
     [System.Serializable]
@@ -23,6 +20,7 @@ public class CanvasController : MonoBehaviour
         public List<string> effects = new List<string>();
         public bool isMissing = false;
         public string collectedText = "";
+        public int wordIndex;
 
         public string GetDisplayedText()
         {
@@ -81,6 +79,8 @@ public class CanvasController : MonoBehaviour
     {
         currentTrigger = trigger;
         words = trigger.words;
+        for (int i = 0; i < words.Count; i++)
+            words[i].wordIndex = i;
         selectedWordIndex = -1;
         hasActiveText = true;
         RefreshText();
@@ -102,7 +102,7 @@ public class CanvasController : MonoBehaviour
             trigger = currentTrigger;
         else
         {
-            TextTrigger[] allTriggers = Object.FindObjectsByType<TextTrigger>(FindObjectsSortMode.None);
+            TextTrigger[] allTriggers = UnityEngine.Object.FindObjectsByType<TextTrigger>(FindObjectsSortMode.None);
             foreach (var t in allTriggers)
             {
                 if (t.areaID == areaID)
@@ -121,7 +121,6 @@ public class CanvasController : MonoBehaviour
         if (wd.isMissing && string.IsNullOrEmpty(wd.collectedText))
         {
             wd.collectedText = wd.plainText;
-
             if (currentTrigger == trigger)
                 RefreshText();
         }
@@ -140,6 +139,21 @@ public class CanvasController : MonoBehaviour
             word.effects.Add(effectName);
 
         RefreshText();
+        UpdateLinkedElements(word, selectedWordIndex);
+    }
+
+    void UpdateLinkedElements(WordData word, int index)
+    {
+        WordLinkedElement[] elements = UnityEngine.Object.FindObjectsByType<WordLinkedElement>(FindObjectsSortMode.None);
+        foreach (var elem in elements)
+        {
+            if (currentTrigger != null &&
+                elem.areaID == currentTrigger.areaID &&
+                elem.wordID == index.ToString())
+            {
+                elem.OnWordEffectsChanged(word.effects);
+            }
+        }
     }
 
     public void ResetText()

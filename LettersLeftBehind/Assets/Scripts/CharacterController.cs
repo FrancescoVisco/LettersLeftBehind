@@ -4,7 +4,6 @@ using UnityEngine;
 public class CharacterMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
-
     private Rigidbody2D rb;
     private Vector2 movement;
 
@@ -15,11 +14,8 @@ public class CharacterMovement : MonoBehaviour
 
     void Update()
     {
-        // Input WASD / Frecce
         movement.x = Input.GetAxisRaw("Horizontal");
         movement.y = Input.GetAxisRaw("Vertical");
-
-        // Normalizza per evitare diagonali più veloci
         movement = movement.normalized;
     }
 
