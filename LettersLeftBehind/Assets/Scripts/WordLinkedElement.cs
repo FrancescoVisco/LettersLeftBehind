@@ -29,6 +29,13 @@ public class WordLinkedElement : MonoBehaviour
         objectRigidbody = GetComponent<Rigidbody2D>();
         objectRenderer = GetComponent<SpriteRenderer>();
 
+        if (objectCollider == null)
+            Debug.LogError($"Collider2D mancante su {name}");
+        if (objectRigidbody == null)
+            Debug.LogError($"Rigidbody2D mancante su {name}");
+        if (objectRenderer == null)
+            Debug.LogError($"SpriteRenderer mancante su {name}");
+
         originalScale = transform.localScale;
         targetScale = originalScale;
 
@@ -62,20 +69,8 @@ public class WordLinkedElement : MonoBehaviour
         activeEffects.Clear();
         activeEffects.AddRange(newEffects);
 
-        UpdateLayer();      // Gestione layer prima di tutto
-        ApplyEffects();     // Applica Bold, Italic, Strike, Highlight
+        ApplyEffects();
         DebugActiveEffects();
-    }
-
-    private void UpdateLayer()
-    {
-        bool hasItalic = activeEffects.Contains("Italic");
-        bool hasStrike = activeEffects.Contains("Strikethrough");
-
-        if (hasItalic && hasStrike)
-            gameObject.layer = LayerMask.NameToLayer("PlayerOnly");
-        else
-            gameObject.layer = LayerMask.NameToLayer("Interactable");
     }
 
     private void ApplyEffects()
@@ -84,15 +79,16 @@ public class WordLinkedElement : MonoBehaviour
         bool hasItalic = activeEffects.Contains("Italic");
         bool hasStrike = activeEffects.Contains("Strikethrough");
         bool hasHighlight = activeEffects.Contains("Highlight");
+        bool hasUnderline = activeEffects.Contains("Underline");
 
         // --- SCALA E MASSA (Bold) ---
         targetScale = hasBold ? originalScale * 2f : originalScale;
 
         if (objectRigidbody != null)
         {
-            // Italic attiva movimento
             if (hasItalic)
             {
+                // Movimento attivo
                 objectRigidbody.bodyType = RigidbodyType2D.Dynamic;
                 objectRigidbody.simulated = true;
                 objectRigidbody.mass = hasBold ? originalMass * 2f : originalMass;
@@ -101,6 +97,7 @@ public class WordLinkedElement : MonoBehaviour
             }
             else
             {
+                // Movimento disattivo
                 objectRigidbody.bodyType = RigidbodyType2D.Kinematic;
                 objectRigidbody.simulated = !startInactive;
                 objectRigidbody.linearVelocity = Vector2.zero;
@@ -109,48 +106,46 @@ public class WordLinkedElement : MonoBehaviour
             }
         }
 
-        // --- COLLIDER ---
+        // --- LAYER ---
         if (hasItalic && hasStrike)
+            gameObject.layer = LayerMask.NameToLayer("PlayerOnly");
+        else
+            gameObject.layer = LayerMask.NameToLayer("Interactable");
+
+        // --- COLLIDER ---
+        if (hasUnderline)
         {
-            // Collide solo con Player, sempre attivo
-            objectCollider.enabled = true;
+            objectCollider.enabled = !startInactive; // underline sovrascrive tutto
+        }
+        else if (hasItalic && hasStrike)
+        {
+            objectCollider.enabled = true; // solo Player collides via layer
         }
         else if (hasStrike)
         {
-            objectCollider.enabled = false;
+            objectCollider.enabled = false; // strike da solo
         }
         else
         {
-            objectCollider.enabled = !startInactive;
+            objectCollider.enabled = !startInactive; // default
         }
 
-        // --- VISIBILITÀ E ILLUMINAZIONE (Highlight) ---
-        if (hasHighlight)
+        // --- VISIBILITÀ E COLORE ---
+        if (hasUnderline)
         {
-            if (objectRenderer != null)
-            {
-                objectRenderer.enabled = true;
-                objectRenderer.color = Color.white; // illumina
-            }
-
-            if (!hasStrike)
-                objectCollider.enabled = true; // collider attivo se Strike non presente
+            objectRenderer.enabled = true;
+            objectRenderer.color = Color.magenta; // underline attivo = viola
+        }
+        else if (hasHighlight)
+        {
+            objectRenderer.enabled = true;
+            objectRenderer.color = Color.white; // illumina
         }
         else
         {
-            SetVisibility(!startInactive);
-            if (objectRenderer != null)
-                objectRenderer.color = originalColor;
+            objectRenderer.enabled = !startInactive;
+            objectRenderer.color = originalColor;
         }
-    }
-
-    private void SetVisibility(bool visible)
-    {
-        if (objectRenderer != null)
-            objectRenderer.enabled = visible;
-
-        if (objectCollider != null)
-            objectCollider.enabled = visible;
     }
 
     private void DebugActiveEffects()

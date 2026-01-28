@@ -1,17 +1,33 @@
 using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class CanvasController : MonoBehaviour
 {
     [Header("References")]
     public TextMeshProUGUI textUI;
+
     [Header("Selection")]
     public Color selectedWordColor = Color.cyan;
     private List<WordData> words = new List<WordData>();
     private int selectedWordIndex = -1;
     private bool hasActiveText = false;
     private TextTrigger currentTrigger = null;
+
+    [Header("Effect Unlocks")]
+    public bool boldUnlocked = true;
+    public bool italicUnlocked = true;
+    public bool strikeUnlocked = true;
+    public bool highlightUnlocked = true;
+    public bool underlineUnlocked = false;
+
+    [Header("Effect Buttons")]
+    public GameObject boldButton;
+    public GameObject italicButton;
+    public GameObject strikeButton;
+    public GameObject highlightButton;
+    public GameObject underlineButton;
 
     [System.Serializable]
     public class WordData
@@ -52,6 +68,11 @@ public class CanvasController : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        UpdateEffectButtons();
+    }
+
     void Update()
     {
         if (hasActiveText)
@@ -84,6 +105,7 @@ public class CanvasController : MonoBehaviour
         selectedWordIndex = -1;
         hasActiveText = true;
         RefreshText();
+        UpdateEffectButtons();
     }
 
     public void ClearTrigger()
@@ -126,9 +148,35 @@ public class CanvasController : MonoBehaviour
         }
     }
 
+    // --- NUOVO: check sblocco effetti ---
+    private bool IsEffectUnlocked(string effectName)
+    {
+        switch (effectName)
+        {
+            case "Bold": return boldUnlocked;
+            case "Italic": return italicUnlocked;
+            case "Strikethrough": return strikeUnlocked;
+            case "Highlight": return highlightUnlocked;
+            case "Underline": return underlineUnlocked;
+            default: return false;
+        }
+    }
+
+    // --- NUOVO: aggiorna visibilità pulsanti ---
+    public void UpdateEffectButtons()
+    {
+        if (boldButton != null) boldButton.SetActive(boldUnlocked);
+        if (italicButton != null) italicButton.SetActive(italicUnlocked);
+        if (strikeButton != null) strikeButton.SetActive(strikeUnlocked);
+        if (highlightButton != null) highlightButton.SetActive(highlightUnlocked);
+        if (underlineButton != null) underlineButton.SetActive(underlineUnlocked);
+    }
+
     public void ApplyEffect(string effectName)
     {
         if (!hasActiveText || selectedWordIndex < 0) return;
+
+        if (!IsEffectUnlocked(effectName)) return;
 
         WordData word = words[selectedWordIndex];
         if (word.isMissing && string.IsNullOrEmpty(word.collectedText)) return;
@@ -163,6 +211,7 @@ public class CanvasController : MonoBehaviour
 
         selectedWordIndex = -1;
         RefreshText();
+        UpdateEffectButtons();
     }
 
     void RefreshText()
