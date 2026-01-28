@@ -3,45 +3,159 @@ using System.Collections.Generic;
 
 public class WordLinkedElement : MonoBehaviour
 {
+    [Header("Link dati")]
     public int areaID;
     public string wordID;
+    public bool startInactive = false;
 
-    public void OnWordEffectsChanged(List<string> effects)
+    [Header("Debug (read-only)")]
+    [SerializeField] private List<string> activeEffects = new List<string>();
+
+    private Collider2D objectCollider;
+    private Rigidbody2D objectRigidbody;
+    private SpriteRenderer objectRenderer;
+
+    private Vector3 originalScale;
+    private Vector3 targetScale;
+    private float originalMass;
+    private Color originalColor;
+
+    private float linearDampingMovable = 5f;
+    private float angularDampingMovable = 2f;
+
+    void Awake()
     {
-        if (effects.Count == 0)
-            return;
+        objectCollider = GetComponent<Collider2D>();
+        objectRigidbody = GetComponent<Rigidbody2D>();
+        objectRenderer = GetComponent<SpriteRenderer>();
 
-        Debug.Log($"Elemento '{name}' ha i seguenti effetti attivi: {string.Join(", ", effects)}");
+        originalScale = transform.localScale;
+        targetScale = originalScale;
 
-        if (effects.Contains("Strikethrough")) OnStrikethrough();
-        if (effects.Contains("Bold")) OnBold();
-        if (effects.Contains("Italic")) OnItalic();
-        if (effects.Contains("Highlight")) OnHighlight();
-        if (effects.Contains("Underline")) OnUnderline();
+        if (objectRigidbody != null)
+        {
+            originalMass = objectRigidbody.mass;
+            objectRigidbody.bodyType = RigidbodyType2D.Kinematic;
+            objectRigidbody.simulated = !startInactive;
+        }
+
+        if (objectRenderer != null)
+        {
+            originalColor = objectRenderer.color;
+            objectRenderer.enabled = !startInactive;
+        }
+
+        if (objectCollider != null)
+            objectCollider.enabled = !startInactive;
+
+        gameObject.layer = LayerMask.NameToLayer("Interactable");
     }
 
-    void OnStrikethrough()
+    void Update()
     {
-
+        // Lerping della scala per Bold
+        transform.localScale = Vector3.MoveTowards(transform.localScale, targetScale, Time.deltaTime * 1.5f);
     }
 
-    void OnBold()
+    public void OnWordEffectsChanged(List<string> newEffects)
     {
+        activeEffects.Clear();
+        activeEffects.AddRange(newEffects);
 
+        UpdateLayer();      // Gestione layer prima di tutto
+        ApplyEffects();     // Applica Bold, Italic, Strike, Highlight
+        DebugActiveEffects();
     }
 
-    void OnItalic()
+    private void UpdateLayer()
     {
+        bool hasItalic = activeEffects.Contains("Italic");
+        bool hasStrike = activeEffects.Contains("Strikethrough");
 
+        if (hasItalic && hasStrike)
+            gameObject.layer = LayerMask.NameToLayer("PlayerOnly");
+        else
+            gameObject.layer = LayerMask.NameToLayer("Interactable");
     }
 
-    void OnHighlight()
+    private void ApplyEffects()
     {
+        bool hasBold = activeEffects.Contains("Bold");
+        bool hasItalic = activeEffects.Contains("Italic");
+        bool hasStrike = activeEffects.Contains("Strikethrough");
+        bool hasHighlight = activeEffects.Contains("Highlight");
 
+        // --- SCALA E MASSA (Bold) ---
+        targetScale = hasBold ? originalScale * 2f : originalScale;
+
+        if (objectRigidbody != null)
+        {
+            // Italic attiva movimento
+            if (hasItalic)
+            {
+                objectRigidbody.bodyType = RigidbodyType2D.Dynamic;
+                objectRigidbody.simulated = true;
+                objectRigidbody.mass = hasBold ? originalMass * 2f : originalMass;
+                objectRigidbody.linearDamping = linearDampingMovable;
+                objectRigidbody.angularDamping = angularDampingMovable;
+            }
+            else
+            {
+                objectRigidbody.bodyType = RigidbodyType2D.Kinematic;
+                objectRigidbody.simulated = !startInactive;
+                objectRigidbody.linearVelocity = Vector2.zero;
+                objectRigidbody.angularVelocity = 0f;
+                objectRigidbody.mass = originalMass;
+            }
+        }
+
+        // --- COLLIDER ---
+        if (hasItalic && hasStrike)
+        {
+            // Collide solo con Player, sempre attivo
+            objectCollider.enabled = true;
+        }
+        else if (hasStrike)
+        {
+            objectCollider.enabled = false;
+        }
+        else
+        {
+            objectCollider.enabled = !startInactive;
+        }
+
+        // --- VISIBILITÀ E ILLUMINAZIONE (Highlight) ---
+        if (hasHighlight)
+        {
+            if (objectRenderer != null)
+            {
+                objectRenderer.enabled = true;
+                objectRenderer.color = Color.white; // illumina
+            }
+
+            if (!hasStrike)
+                objectCollider.enabled = true; // collider attivo se Strike non presente
+        }
+        else
+        {
+            SetVisibility(!startInactive);
+            if (objectRenderer != null)
+                objectRenderer.color = originalColor;
+        }
     }
 
-    void OnUnderline()
+    private void SetVisibility(bool visible)
     {
+        if (objectRenderer != null)
+            objectRenderer.enabled = visible;
 
+        if (objectCollider != null)
+            objectCollider.enabled = visible;
+    }
+
+    private void DebugActiveEffects()
+    {
+        if (activeEffects.Count == 0) return;
+        Debug.Log($"[WordLinkedElement] '{name}' effetti attivi: {string.Join(", ", activeEffects)}");
     }
 }
